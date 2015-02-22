@@ -48,7 +48,8 @@ function initTasks (options) {
 
     var commands =[
       'git add ' + pkgs.join(' '),
-      'git commit -m "' + message + '"',
+      'git diff --exit-code; rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi',
+      'git diff --cached --exit-code; rc=$?; if [[ $rc != 0 ]]; then git commit -m "' + message + '"; fi' ,
       'git tag ' + versionString
     ];
 
