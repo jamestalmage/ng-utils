@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "server side replacement for angular utility functions",
   "main": "index.js",
+  "browser": "browser.js",
   "scripts": {
     "test": "mocha"
   },
@@ -24,6 +25,11 @@
     "gulp": "^3.8.11",
     "gulp-bump": "^0.1.13",
     "gulp-shell": "^0.3.0",
-    "semver": "^4.3.0"
+    "gulp-util": "^3.0.3",
+    "semver": "^4.3.0",
+    "yargs": "^3.2.1"
+  },
+  "dependencies": {
+    "lodash": "^3.3.0"
   }
 }

@@ -1,5 +1,5 @@
 module.exports = initTasks;
-initTasks.version = version;
+initTasks.version = newVersion;
 
 var gulp = require('gulp');
 var bump = require('gulp-bump');
@@ -7,6 +7,7 @@ var semver = require('semver');
 var shell = require('gulp-shell');
 var argv = require('yargs').argv;
 var path = require('path');
+var gutil = require('gulp-util');
 
 /**
  *
@@ -22,29 +23,13 @@ var path = require('path');
  *  Each should be specified as relative path from your gulpfile (i.e. './dist/browser.min.js').
  *  It is recommended that you .gitignore these files, they will be forcefully added to your commit by this plugin.
  *
- *  If you specify a Function, it will be called with the *new* version string (i.e. `'1.0.2'`)
+ *  If you specify a Function, it will be called with the version string (i.e. `'1.0.2'`)
  *  as its first argument. It should return an Array of strings (or comma separated string) as specified above.
  *
  * @param {string[]|string} options.pre
  *  List of tasks required to generate artifacts.
- *  They will be run *after* package.json.version is bumped, but before committing and tagging it in git.
+ *  They will be run before committing and tagging it in git.
  *
- *
- * @params {string[]|string} options.post
- *  List of tasks to run post commit of the new release. This may include deleting the changelog, etc.
- *
- * -----------------------------------------------
- *
- * Your `pre` and `post` tasks can access the new version in a few ways:
- *
- *  1.  `require('./package.json').version`
- *  2.  process.env.PRE_BUMP_VERSION / process.env.POST_BUMP_VERSION
- *  3.  require('gulp/bump.js').version(); (this module exports a method `version` that will always return the new value)
- *
- * Note that option 1 presents a potential problem if you require and cache the value before
- *  the bump tasks runs. After incrementing the version bump will reject package.json from the
- *  require cache, so requiring package.json inline inside your task should give you the new
- *  version.
  */
 function initTasks (options) {
   var pkgs = processOption(options, 'pkgs', ['./package.json']);
@@ -53,51 +38,77 @@ function initTasks (options) {
   var artifacts = processOption(options, 'artifacts', null);
 
   var pre = processOption(options, 'pre', []);
-  var post = processOption(options, 'post', []);
+  var dryRun = options && (options.skipCommit || options.dryRun);
 
-  pre.unshift('bump');
-  post.unshift('_release');
+  gulp.task('pre_release', pre);
 
-  gulp.task('_bump', function () {
+  gulp.task('commit_release', ['pre_release'], function () {
+    var versionString = 'v' + oldVersion();
+    var message = 'Release ' + versionString;
+
+    var commands =[
+      'git add ' + pkgs.join(' '),
+      'git commit -m "' + message + '"',
+      'git tag ' + versionString
+    ];
+
+    if (artifacts) {
+      commands.unshift('git add -f ' + artifacts.join(' '));
+    }
+
+    if (dryRun) {
+      gutil.log('dry run, would have executed\n   ' + gutil.colors.yellow(commands.join('\n   ')));
+      return;
+    }
+
+    return shell.task(commands)();
+  });
+
+  gulp.task('bump', ['commit_release'], function () {
     return gulp.src(pkgs)
       .pipe(bump({
-        version: version()
+        version: newVersion()
       }))
       .pipe(gulp.dest('./'));
   });
 
-  gulp.task('_bump_invalidate_pkg',['_bump'], function(){
-     delete require.cache[require.resolve(pkgJsonPath())];
-  });
+  gulp.task('release',['bump'], function() {
+    var versionString = 'v' + newVersion();
+    var message = 'Bumping version to: ' + versionString;
 
-  gulp.task('bump',['_bump_invalidate_pkg']);
-
-  gulp.task('_release', pre, function () {
-    var versionString = 'v' + version();
-    var message = 'Release ' + versionString;
-    return shell.task([
-      'git add -f ./browser/journaling-firebase.js',
+    var commands = [
       'git add ' + pkgs.join(' '),
-      'git commit -m "' + message + '"',
-      'git tag ' + versionString
-    ])();
+      'git commit -m "' + message + '"'
+    ];
+
+    if (dryRun) {
+      gutil.log('dry run, would have executed\n   ' + gutil.colors.yellow(commands.join('\n   ')));
+      return;
+    }
+
+    return shell.task(commands)();
   });
 
-  gulp.task('release', post);
 }
 
-var v;
-function version () {
-  if(v) return v;
-  var previous = require(pkgJsonPath()).version;
-  v = semver.inc(previous, argv.type || 'patch');
-  process.env.PRE_BUMP_VERSION = previous;
-  process.env.POST_BUMP_VERSION = v;
-  return v;
+var _newVersion, _oldVersion;
+function newVersion () {
+  if(_newVersion) return _newVersion;
+  var relativePath = './' + path.relative(__dirname, process.cwd() + '/package.json');
+  _oldVersion = require(relativePath).version;
+  _newVersion = semver.inc(_oldVersion, type());
+  process.env.PRE_BUMP_VERSION = _oldVersion;
+  process.env.POST_BUMP_VERSION = _newVersion;
+  return _newVersion;
 }
 
-function pkgJsonPath(){
-  return './' + path.relative(__dirname, process.cwd() + '/package.json');
+function oldVersion (){
+  newVersion();
+  return _oldVersion;
+}
+
+function type () {
+  return argv.type || 'patch';
 }
 
 function processOption(options, optName, defaultValue) {
@@ -106,11 +117,15 @@ function processOption(options, optName, defaultValue) {
   }
   var arrayOrString = options[optName];
 
+  if(typeof arrayOrString === 'function'){
+    arrayOrString = arrayOrString(oldVersion(), newVersion());
+  }
+
   if(typeof arrayOrString === 'string'){
     // can be specified as comma separated strings
     arrayOrString =  arrayOrString.split(',');
     for(var i = 0, l = arrayOrString.length; i < l; ++i){
-      arrayOrString[i] = arrayOrString.trim();
+      arrayOrString[i] = arrayOrString[i].trim();
     }
     return arrayOrString;
   }
