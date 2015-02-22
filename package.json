@@ -1,0 +1,29 @@
+{
+  "name": "ng-utils",
+  "version": "0.0.1",
+  "description": "server side replacement for angular utility functions",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jamestalmage/ng-utils.git"
+  },
+  "keywords": [
+    "angular",
+    "node"
+  ],
+  "author": "James Talmage",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jamestalmage/ng-utils/issues"
+  },
+  "homepage": "https://github.com/jamestalmage/ng-utils",
+  "devDependencies": {
+    "gulp": "^3.8.11",
+    "gulp-bump": "^0.1.13",
+    "gulp-shell": "^0.3.0",
+    "semver": "^4.3.0"
+  }
+}
