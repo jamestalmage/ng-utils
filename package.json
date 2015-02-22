@@ -1,6 +1,6 @@
 {
   "name": "ng-utils",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "server side replacement for angular utility functions",
   "main": "index.js",
   "browser": "browser.js",

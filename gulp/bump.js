@@ -47,10 +47,10 @@ function initTasks (options) {
     var message = 'Release ' + versionString;
 
     var commands =[
-      'git add ' + pkgs.join(' '),
       'git diff --exit-code; rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi',
       'git diff --cached --exit-code; rc=$?; if [[ $rc != 0 ]]; then git commit -m "' + message + '"; fi' ,
-      'git tag ' + versionString
+      'git tag ' + versionString,
+      'npm publish'
     ];
 
     if (artifacts) {
